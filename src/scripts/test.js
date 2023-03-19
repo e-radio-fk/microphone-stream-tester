@@ -6248,16 +6248,7 @@ function config (name) {
 
 var MicrophoneStream = require('microphone-stream')["default"];
 var micStream = new MicrophoneStream();
-
-// const Speaker = require('speaker');
-
-// // Create the Speaker instance
-// const speaker = new Speaker({
-//     channels: 1,          // 2 channels
-//     bitDepth: 32,         // 16-bit samples
-//     sampleRate: 48000     // 44,100 Hz sample rate
-// });
-
+var bufferFrom = require('buffer-from');
 function PCMPlayer(t) {
   this.init(t);
 }
@@ -6322,11 +6313,21 @@ var player = new PCMPlayer({
   encoding: '16bitInt',
   channels: 1,
   sampleRate: 48000,
-  flushingTime: 2000
+  flushingTime: 500
 });
 function show_error(str) {
   alert(str);
 }
+function floatTo16BitPCM(input) {
+  var output = new DataView(new ArrayBuffer(input.length * 2)); // length is in bytes (8-bit), so *2 to get 16-bit length
+  for (var i = 0; i < input.length; i++) {
+    var multiplier = input[i] < 0 ? 0x8000 : 0x7fff; // 16-bit signed range is -32768 to 32767
+    output.setInt16(i * 2, input[i] * multiplier | 0, true); // index, value ("| 0" = convert to 32-bit int, round towards 0), littleEndian.
+  }
+
+  return bufferFrom(output.buffer);
+}
+;
 document.getElementById("hello").onclick = test;
 function test() {
   /* check if getUserMedia is available */
@@ -6342,7 +6343,8 @@ function test() {
     // micStream.pipe(speaker);
     micStream.on('data', function (data) {
       var raw = MicrophoneStream.toRaw(data);
-      player.feed(raw);
+      var raw16 = floatTo16BitPCM(raw);
+      player.feed(raw16);
     });
     micStream.on('format', function (format) {
       console.log('got format:', format);
@@ -6352,4 +6354,4 @@ function test() {
   });
 }
 
-},{"microphone-stream":8}]},{},[28]);
+},{"buffer-from":3,"microphone-stream":8}]},{},[28]);
