@@ -6247,8 +6247,9 @@ function config (name) {
 "use strict";
 
 var MicrophoneStream = require('microphone-stream')["default"];
-var micStream = new MicrophoneStream();
 var bufferFrom = require('buffer-from');
+var micStream = new MicrophoneStream();
+var g_audioContext = new AudioContext();
 function PCMPlayer(t) {
   this.init(t);
 }
@@ -6311,8 +6312,8 @@ PCMPlayer.prototype.init = function (t) {
 };
 var player = new PCMPlayer({
   encoding: '16bitInt',
-  channels: 1,
-  sampleRate: 48000,
+  channels: 2,
+  sampleRate: g_audioContext.sampleRate,
   flushingTime: 500
 });
 function show_error(str) {
@@ -6338,16 +6339,13 @@ function test() {
     audio: true,
     video: false
   }).then(function (_audioStream) {
-    // use this library to pipe to our socket.io-microphone-stream
     micStream.setStream(_audioStream);
-    // micStream.pipe(speaker);
     micStream.on('data', function (data) {
+      // get 32bit
       var raw = MicrophoneStream.toRaw(data);
+      // convert to 16bit
       var raw16 = floatTo16BitPCM(raw);
       player.feed(raw16);
-    });
-    micStream.on('format', function (format) {
-      console.log('got format:', format);
     });
   })["catch"](function (err) {
     show_error('Error: Microphone access has been denied probably!', err);
